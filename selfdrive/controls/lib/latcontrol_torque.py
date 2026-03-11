@@ -104,7 +104,7 @@ class LatControlTorque(LatControl):
       pid_log.f = float(self.pid.f)
       pid_log.output = float(-output_torque) # TODO: log lat accel?
       pid_log.actualLateralAccel = float(measurement)
-      pid_log.desiredLateralAccel = float(setpoint)
+      pid_log.desiredLateralAccel = float(self.torque_inject if self.torque_inject != 0.0 else setpoint)
       pid_log.desiredLateralJerk = float(desired_lateral_jerk)
       pid_log.saturated = bool(self._check_saturation(self.steer_max - abs(output_torque) < 1e-3, CS, steer_limited_by_safety, curvature_limited))
 
