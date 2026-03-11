@@ -92,6 +92,7 @@ class LatControlTorque(LatControl):
       freeze_integrator = steer_limited_by_safety or CS.steeringPressed or CS.vEgo < 5
       output_lataccel = self.pid.update(pid_log.error, speed=CS.vEgo, feedforward=ff, freeze_integrator=freeze_integrator)
       output_torque = self.torque_from_lateral_accel(output_lataccel, self.torque_params)
+      output_torque += self.torque_from_lateral_accel(self.torque_inject, self.torque_params)
 
       pid_log.active = True
       pid_log.p = float(self.pid.p)

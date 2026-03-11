@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import math
 import numpy as np
 from dataclasses import dataclass
 
@@ -29,6 +30,7 @@ class Maneuver:
   actions: list[Action]
   repeat: int = 0
   initial_speed: float = 0.  # m/s
+  is_inject: bool = False
 
   _active: bool = False
   _finished: bool = False
@@ -95,40 +97,61 @@ def _sine_action(amplitude, period, duration):
 
 MANEUVERS = [
   Maneuver(
-    "step right 50mph",
+    "step right 20mph",
     [Action([0.5], [1.0]), Action([-0.5], [1.5])],
     repeat=2,
-    initial_speed=50. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
+    is_inject=True,
   ),
   Maneuver(
-    "step left 50mph",
+    "step left 20mph",
     [Action([-0.5], [1.0]), Action([0.5], [1.5])],
     repeat=2,
-    initial_speed=50. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
+    is_inject=True,
   ),
   Maneuver(
-    "sine 0.5Hz 50mph",
+    "sine 0.5Hz 20mph",
     [_sine_action(1.0, 2.0, 2.0), Action([0.0], [0.5])],
     repeat=2,
-    initial_speed=50. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
+    is_inject=True,
   ),
   Maneuver(
-    "step right 70mph",
+    "step right 20mph",
     [Action([0.5], [1.0]), Action([-0.5], [1.5])],
     repeat=2,
-    initial_speed=70. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
   ),
   Maneuver(
-    "step left 70mph",
+    "step left 20mph",
     [Action([-0.5], [1.0]), Action([0.5], [1.5])],
     repeat=2,
-    initial_speed=70. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
   ),
   Maneuver(
-    "sine 0.5Hz 70mph",
+    "sine 0.5Hz 20mph",
     [_sine_action(1.0, 2.0, 2.0), Action([0.0], [0.5])],
     repeat=2,
-    initial_speed=70. * CV.MPH_TO_MS,
+    initial_speed=20. * CV.MPH_TO_MS,
+  ),
+  Maneuver(
+    "step right 30mph",
+    [Action([0.5], [1.0]), Action([-0.5], [1.5])],
+    repeat=2,
+    initial_speed=30. * CV.MPH_TO_MS,
+  ),
+  Maneuver(
+    "step left 30mph",
+    [Action([-0.5], [1.0]), Action([0.5], [1.5])],
+    repeat=2,
+    initial_speed=30. * CV.MPH_TO_MS,
+  ),
+  Maneuver(
+    "sine 0.5Hz 30mph",
+    [_sine_action(1.0, 2.0, 2.0), Action([0.0], [0.5])],
+    repeat=2,
+    initial_speed=30. * CV.MPH_TO_MS,
   ),
 ]
 
@@ -169,7 +192,10 @@ def main():
 
       if maneuver.active:
         action_remaining = maneuver.actions[maneuver._action_index].time_bp[-1] - maneuver._action_frames * DT_MDL
-        if maneuver.description.startswith('sine'):
+        if maneuver.description.startswith('inject'):
+          freq = maneuver.description.split()[1]
+          alert_msg.alertDebug.alertText1 = f'Active inject {freq} {max(action_remaining, 0):.1f}s'
+        elif maneuver.description.startswith('sine'):
           freq = maneuver.description.split()[1]
           alert_msg.alertDebug.alertText1 = f'Active sine {freq} {max(action_remaining, 0):.1f}s'
         else:
@@ -195,7 +221,11 @@ def main():
 
     plan_send.valid = maneuver is not None and maneuver.active
     if plan_send.valid:
-      plan_send.lateralManeuverPlan.desiredCurvature = maneuver._baseline_curvature + accel / max(v_ego, MIN_SPEED) ** 2
+      if maneuver.is_inject:
+        plan_send.lateralManeuverPlan.desiredCurvature = maneuver._baseline_curvature
+        plan_send.lateralManeuverPlan.torqueInject = accel
+      else:
+        plan_send.lateralManeuverPlan.desiredCurvature = maneuver._baseline_curvature + accel / max(v_ego, MIN_SPEED) ** 2
     pm.send('lateralManeuverPlan', plan_send)
 
     if maneuver is not None and maneuver.finished:

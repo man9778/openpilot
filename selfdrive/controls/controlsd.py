@@ -117,9 +117,12 @@ class Controls:
     # Steering PID loop and lateral MPC
     # Reset desired curvature to current to avoid violating the limits on engage
     if self.sm.recv_frame['lateralManeuverPlan'] > 0 and self.sm.valid['lateralManeuverPlan']:
-      new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
+      maneuver_plan = self.sm['lateralManeuverPlan']
+      new_desired_curvature = maneuver_plan.desiredCurvature if CC.latActive else self.curvature
+      self.LaC.torque_inject = float(maneuver_plan.torqueInject) if CC.latActive else 0.0
     else:
       new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
+      self.LaC.torque_inject = 0.0
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["liveDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 

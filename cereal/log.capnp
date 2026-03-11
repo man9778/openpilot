@@ -1244,6 +1244,7 @@ struct DriverAssistance {
 
 struct LateralManeuverPlan {
   desiredCurvature @0 :Float32;  # 1/m
+  torqueInject @1 :Float32;
 }
 
 struct LongitudinalPlan @0xe00b5b3eba12876c {
