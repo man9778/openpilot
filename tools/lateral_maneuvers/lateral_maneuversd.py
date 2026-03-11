@@ -12,8 +12,9 @@ from openpilot.selfdrive.controls.lib.drive_helpers import MIN_SPEED
 
 # thresholds for starting maneuvers
 MAX_SPEED_DEV = 1.0 # deviation in m/s
-MAX_CURV = 0.0005 # 2 km radius
-MAX_ROLL = 0.03 # 1.71°
+MAX_CURV = 0.002 # 500 m radius
+MAX_ROLL = 0.1 # 5.7°
+STABILIZE_TIME = 1.0 # sec
 
 @dataclass
 class Action:
@@ -45,7 +46,7 @@ class Maneuver:
     ready = abs(v_ego - self.initial_speed) < MAX_SPEED_DEV and lat_active and abs(curvature) < MAX_CURV and abs(roll) < MAX_ROLL
     self._ready_cnt = (self._ready_cnt + 1) if ready else 0
 
-    if self._ready_cnt > (3. / DT_MDL):
+    if self._ready_cnt > (STABILIZE_TIME / DT_MDL):
       if not self._active:
         self._baseline_curvature = curvature
       self._active = True
@@ -204,7 +205,7 @@ def main():
       elif not (abs(v_ego - maneuver.initial_speed) < 1.0 and sm['carControl'].latActive):
         alert_msg.alertDebug.alertText1 = f'Set speed to {maneuver.initial_speed * CV.MS_TO_MPH:0.0f} mph'
       else:
-        ready_time = max(3. - maneuver._ready_cnt * DT_MDL, 0)
+        ready_time = max(STABILIZE_TIME - maneuver._ready_cnt * DT_MDL, 0)
         curv_ok = abs(cur_curvature) < MAX_CURV
         roll_ok = abs(roll) < MAX_ROLL
         if curv_ok and roll_ok:
