@@ -102,27 +102,6 @@ MANEUVERS = [
     [Action([0.5], [1.0]), Action([-0.5], [1.5])],
     repeat=2,
     initial_speed=20. * CV.MPH_TO_MS,
-    is_inject=True,
-  ),
-  Maneuver(
-    "step left 20mph",
-    [Action([-0.5], [1.0]), Action([0.5], [1.5])],
-    repeat=2,
-    initial_speed=20. * CV.MPH_TO_MS,
-    is_inject=True,
-  ),
-  Maneuver(
-    "sine 0.5Hz 20mph",
-    [_sine_action(1.0, 2.0, 2.0), Action([0.0], [0.5])],
-    repeat=2,
-    initial_speed=20. * CV.MPH_TO_MS,
-    is_inject=True,
-  ),
-  Maneuver(
-    "step right 20mph",
-    [Action([0.5], [1.0]), Action([-0.5], [1.5])],
-    repeat=2,
-    initial_speed=20. * CV.MPH_TO_MS,
   ),
   Maneuver(
     "step left 20mph",
