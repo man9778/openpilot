@@ -23,15 +23,22 @@ class LiveStreamVideoStreamTrack(TiciVideoStreamTrack):
     self._pts = 0
     self._t0_ns = time.monotonic_ns()
 
-  def _recv_blocking(self):
-    while True:
-      msg = messaging.recv_one(self._sock)
-      if msg is not None:
-        return msg
+  # def _recv_blocking(self):
+  #   while True:
+  #     msg = messaging.recv_one(self._sock)
+  #     if msg is not None:
+  #       return msg
+
+  # async def recv(self):
+  #   loop = asyncio.get_running_loop()
+  #   msg = await loop.run_in_executor(None, self._recv_blocking)
 
   async def recv(self):
-    loop = asyncio.get_running_loop()
-    msg = await loop.run_in_executor(None, self._recv_blocking)
+    while True:
+      msg = messaging.recv_one_or_none(self._sock)
+      if msg is not None:
+        break
+      await asyncio.sleep(0.005)
 
     evta = getattr(msg, msg.which())
 

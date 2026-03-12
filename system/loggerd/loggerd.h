@@ -48,8 +48,8 @@ struct EncoderSettings {
 
   static EncoderSettings StreamEncoderSettings() {
     // int _stream_bitrate = getenv("STREAM_BITRATE") ? atoi(getenv("STREAM_BITRATE")) : 1'000'000;
-    int _stream_bitrate = 10'000'000;
-    return EncoderSettings{.encode_type = cereal::EncodeIndex::Type::QCAMERA_H264, .bitrate = _stream_bitrate , .gop_size = 15};
+    int _stream_bitrate = 5'000'000;
+    return EncoderSettings{.encode_type = cereal::EncodeIndex::Type::FULL_H_E_V_C, .bitrate = _stream_bitrate , .gop_size = 30};
   }
 };
 
