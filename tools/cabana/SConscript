@@ -12,7 +12,7 @@ Import('replay_lib')
 cabana_env = env.Clone()
 cabana_env['CPPPATH'] += [imgui.INCLUDE_DIR, imgui.SRC_DIR]
 opendbc_path = '-DOPENDBC_FILE_PATH=\'"%s"\'' % (cabana_env.Dir("../../opendbc/dbc").abspath)
-cabana_env['CXXFLAGS'] += [opendbc_path]
+cabana_env['CXXFLAGS'] += [opendbc_path, '-DImDrawIdx=unsigned']
 
 if arch != "Darwin":
   cabana_env['CXXFLAGS'] += ['-DIMGUI_IMPL_OPENGL_ES3']

@@ -611,8 +611,7 @@ void CabanaImguiApp::drawVideoPanel(const ImVec2 &size) {
       if (ImGui::IsItemHovered()) {
         timeline_hover_sec_ = hovered_sec;
       }
-      // Seek on mouse release only (Qt seeks on sliderReleased, not during drag)
-      if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+      if (ImGui::IsItemActive()) {
         stream_->seekTo(hovered_sec);
       }
     }
