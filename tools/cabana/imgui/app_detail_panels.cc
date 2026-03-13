@@ -280,6 +280,27 @@ void CabanaImguiApp::drawChartPanel(const ImVec2 &size) {
   ImGui::BeginChild("ChartPanel", size, ImGuiChildFlags_Borders);
   ensureChartTabs();
 
+  constexpr ImGuiMouseButton kChartZoomButton = ImGuiMouseButton_Left;
+  constexpr float kMinChartZoomDragPx = 10.0f;
+  constexpr double kMinChartZoomSeconds = 0.01;
+  struct ScopedQtChartInputMap {
+    ImPlotInputMap previous;
+    ScopedQtChartInputMap() : previous(ImPlot::GetInputMap()) {
+      ImPlotInputMap qt_map = previous;
+      qt_map.Pan = ImGuiMouseButton_Middle;
+      qt_map.PanMod = ImGuiMod_None;
+      qt_map.Fit = ImGuiMouseButton_Middle;
+      qt_map.Select = kChartZoomButton;
+      qt_map.SelectCancel = ImGuiMouseButton_Middle;
+      qt_map.SelectMod = ImGuiMod_None;
+      qt_map.SelectHorzMod = ImGuiMod_Alt;
+      qt_map.SelectVertMod = ImGuiMod_None;  // Qt used a horizontal rubber-band zoom.
+      qt_map.Menu = ImGuiMouseButton_Right;
+      ImPlot::GetInputMap() = qt_map;
+    }
+    ~ScopedQtChartInputMap() { ImPlot::GetInputMap() = previous; }
+  } qt_chart_input_map;
+
   // === Toolbar ===
   // Note: do NOT cache currentCharts() reference here — tab mutations below can invalidate it
   ImGui::TextUnformatted("Charts");
@@ -707,9 +728,9 @@ void CabanaImguiApp::drawChartPanel(const ImVec2 &size) {
     const char *y_unit = y_unit_str.empty() ? nullptr : y_unit_str.c_str();
 
     // --- ImPlot ---
-    ImPlotFlags plot_flags = ImPlotFlags_NoMenus;
-    if (series.size() <= 1) plot_flags |= ImPlotFlags_NoLegend;
-    if (ImPlot::BeginPlot(("##chart_" + std::to_string(chart.id)).c_str(), ImVec2(-1, -1), plot_flags)) {
+      ImPlotFlags plot_flags = ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect;
+      if (series.size() <= 1) plot_flags |= ImPlotFlags_NoLegend;
+      if (ImPlot::BeginPlot(("##chart_" + std::to_string(chart.id)).c_str(), ImVec2(-1, -1), plot_flags)) {
       ImPlotAxisFlags x_flags = rows > 1 && ci < chart_count - eff_columns ? ImPlotAxisFlags_NoTickLabels : ImPlotAxisFlags_None;
       ImPlot::SetupAxes(ci >= chart_count - eff_columns ? "Time (s)" : nullptr, y_unit, x_flags, ImPlotAxisFlags_None);
       ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, ImPlotCond_Always);
@@ -771,18 +792,58 @@ void CabanaImguiApp::drawChartPanel(const ImVec2 &size) {
         stream_->seekTo(std::clamp(cur, stream_->minSeconds(), stream_->maxSeconds()));
       }
 
-      // Box selection zoom
-      if (ImPlot::IsPlotSelected()) {
-        ImPlotRect selection = ImPlot::GetPlotSelection();
-        updateChartRange((selection.X.Min + selection.X.Max) * 0.5, selection.X.Max - selection.X.Min);
-        ImPlot::CancelPlotSelection();
-      }
-
       // Cross-chart synchronized hover: use this frame's hover or previous frame's synced value
       const bool this_hovered = ImPlot::IsPlotHovered();
       const double hover_sec = this_hovered ? ImPlot::GetPlotMousePos().x : chart_hover_sec_;
       const bool show_track = hover_sec >= 0;
       if (this_hovered) hover_sec_this_frame = ImPlot::GetPlotMousePos().x;
+
+      bool left_drag_zoomed = false;
+      const ImVec2 plot_pos = ImPlot::GetPlotPos();
+      const ImVec2 plot_size = ImPlot::GetPlotSize();
+      const float plot_min_x = plot_pos.x;
+      const float plot_max_x = plot_pos.x + plot_size.x;
+      const float plot_min_y = plot_pos.y;
+      const float plot_max_y = plot_pos.y + plot_size.y;
+      const auto clampPlotX = [&](float x) { return std::clamp(x, plot_min_x, plot_max_x); };
+      const ImVec2 mouse = ImGui::GetIO().MousePos;
+      if (this_hovered && ImGui::IsMouseClicked(kChartZoomButton) && !ImGui::GetIO().KeyShift) {
+        chart_zoom_drag_.active = true;
+        chart_zoom_drag_.chart_id = chart.id;
+        chart_zoom_drag_.plot_min_x = plot_min_x;
+        chart_zoom_drag_.plot_min_y = plot_min_y;
+        chart_zoom_drag_.plot_max_x = plot_max_x;
+        chart_zoom_drag_.plot_max_y = plot_max_y;
+        chart_zoom_drag_.start_x = clampPlotX(mouse.x);
+      }
+      if (chart_zoom_drag_.active && chart_zoom_drag_.chart_id == chart.id) {
+        const float cur_x = std::clamp(mouse.x, chart_zoom_drag_.plot_min_x, chart_zoom_drag_.plot_max_x);
+        const float drag_width_px = std::abs(cur_x - chart_zoom_drag_.start_x);
+        if (ImGui::IsMouseDown(kChartZoomButton) && !ImGui::GetIO().KeyShift && drag_width_px > kMinChartZoomDragPx) {
+          ImDrawList *overlay = ImPlot::GetPlotDrawList();
+          const float sel_min_x = std::min(chart_zoom_drag_.start_x, cur_x);
+          const float sel_max_x = std::max(chart_zoom_drag_.start_x, cur_x);
+          overlay->AddRectFilled(ImVec2(sel_min_x, chart_zoom_drag_.plot_min_y),
+                                 ImVec2(sel_max_x, chart_zoom_drag_.plot_max_y),
+                                 IM_COL32(180, 205, 230, 40));
+          overlay->AddRect(ImVec2(sel_min_x, chart_zoom_drag_.plot_min_y),
+                           ImVec2(sel_max_x, chart_zoom_drag_.plot_max_y),
+                           IM_COL32(180, 205, 230, 180), 0.0f, 0, 1.0f);
+        }
+        if (ImGui::IsMouseReleased(kChartZoomButton)) {
+          if (!ImGui::GetIO().KeyShift && drag_width_px > kMinChartZoomDragPx) {
+            const float sel_min_x = std::min(chart_zoom_drag_.start_x, cur_x);
+            const float sel_max_x = std::max(chart_zoom_drag_.start_x, cur_x);
+            const double min_x = std::clamp(ImPlot::PixelsToPlot(ImVec2(sel_min_x, plot_min_y)).x, stream_->minSeconds(), stream_->maxSeconds());
+            const double max_x = std::clamp(ImPlot::PixelsToPlot(ImVec2(sel_max_x, plot_min_y)).x, stream_->minSeconds(), stream_->maxSeconds());
+            if ((max_x - min_x) > kMinChartZoomSeconds) {
+              updateChartRange((min_x + max_x) * 0.5, max_x - min_x);
+              left_drag_zoomed = true;
+            }
+          }
+          chart_zoom_drag_ = {};
+        }
+      }
 
       // Track points using "last sample at or before hover time" semantics (skip hidden series)
       if (show_track) {
@@ -832,8 +893,8 @@ void CabanaImguiApp::drawChartPanel(const ImVec2 &size) {
           }
         }
         // Click to seek
-        if (ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !ImGui::GetIO().KeyShift) {
-          ImVec2 dd = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+        if (ImGui::IsMouseReleased(kChartZoomButton) && !ImGui::GetIO().KeyShift && !left_drag_zoomed) {
+          ImVec2 dd = ImGui::GetMouseDragDelta(kChartZoomButton);
           if (std::abs(dd.x) < 4.0f && std::abs(dd.y) < 4.0f) {
             stream_->seekTo(std::clamp(hover_sec, stream_->minSeconds(), stream_->maxSeconds()));
           }
@@ -923,7 +984,8 @@ void CabanaImguiApp::drawChartPanel(const ImVec2 &size) {
     ImGui::EndChild();
 
     // Drag-drop: source (matches Qt: default = merge onto target, Shift = reorder)
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+    if (!(chart_zoom_drag_.active && chart_zoom_drag_.chart_id == chart.id) &&
+        ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
       ImGui::SetDragDropPayload("CHART_REORDER", &ci, sizeof(int));
       ImGui::Text("Drop onto chart to merge (hold Shift to reorder)");
       ImGui::EndDragDropSource();
