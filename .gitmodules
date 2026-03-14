@@ -16,3 +16,6 @@
 [submodule "opendbc_repo"]
 	path = opendbc_repo
 	url = https://github.com/man9778/opendbc
+[submodule "openpilot/opendbc_repo"]
+	path = openpilot/opendbc_repo
+	url = https://github.com/man9778/opendbc
