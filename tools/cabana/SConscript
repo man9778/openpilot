@@ -1,6 +1,7 @@
 import os
 
 import imgui
+import libusb_package
 import nanosvg
 
 Import('env', 'arch', 'common', 'messaging', 'visionipc', 'cereal')
@@ -11,7 +12,13 @@ Import('replay_lib')
 
 # ---- Cabana build ----
 cabana_env = env.Clone()
-cabana_env['CPPPATH'] += [imgui.INCLUDE_DIR, imgui.SRC_DIR, nanosvg.INCLUDE_DIR]
+
+# libusb: headers from system, shared lib from pip package
+libusb_lib_path = str(libusb_package.get_library_path())
+libusb_lib_dir = os.path.dirname(libusb_lib_path)
+cabana_env['LIBPATH'] += [libusb_lib_dir]
+
+cabana_env['CPPPATH'] += [imgui.INCLUDE_DIR, imgui.SRC_DIR, nanosvg.INCLUDE_DIR, '#tools/cabana/include']
 opendbc_path = '-DOPENDBC_FILE_PATH=\'"%s"\'' % (cabana_env.Dir("../../opendbc/dbc").abspath)
 cabana_env['CXXFLAGS'] += [opendbc_path, '-DImDrawIdx=unsigned', '-DGLFW_INCLUDE_NONE']
 
@@ -60,11 +67,6 @@ cabana_base_libs = [common, messaging, cereal, visionipc, replay_lib,
 cabana_backend_lib = cabana_env.Library("cabana_backend_lib", cabana_srcs + cabana_shared_objs, LIBS=cabana_base_libs)
 imgui_core_objs = [cabana_env.Object(target='cabana_' + os.path.splitext(os.path.basename(src))[0], source=src) for src in imgui_sources]
 imgui_core_lib = cabana_env.Library("cabana_imgui_core_lib", imgui_core_objs, LIBS=cabana_base_libs)
-
-if arch == "Darwin":
-  # Homebrew paths for libusb (brew may be removed from PATH on CI but packages are still installed)
-  cabana_env['CPPPATH'] += ['/opt/homebrew/include']
-  cabana_env['LIBPATH'] += ['/opt/homebrew/lib']
 
 cabana_app_env = cabana_env.Clone()
 cabana_app_env['LIBPATH'] += [imgui.LIB_DIR]

@@ -58,7 +58,6 @@ function install_ubuntu_deps() {
     build-essential \
     curl \
     libcurl4-openssl-dev \
-    libusb-1.0-0-dev \
     locales \
     git \
     xvfb
@@ -115,23 +114,14 @@ function install_python_deps() {
 }
 
 function install_macos_deps() {
-  # Find brew even if /opt/homebrew has been removed from PATH
-  BREW=""
-  if command -v brew > /dev/null 2>&1; then
-    BREW=brew
-  elif [ -x /opt/homebrew/bin/brew ]; then
-    BREW=/opt/homebrew/bin/brew
-  fi
-
-  if [ -z "$BREW" ]; then
+  if ! command -v brew > /dev/null 2>&1; then
     echo "homebrew not found, skipping macOS system dependency install"
     return 0
   fi
 
   if ! command -v cmake > /dev/null 2>&1; then
-    $BREW install cmake
+    brew install cmake
   fi
-  $BREW install libusb
 }
 
 # --- Main ---
