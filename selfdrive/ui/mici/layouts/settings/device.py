@@ -65,7 +65,7 @@ class MiciFccModal(NavRawScrollPanel):
 
 
 def _engaged_confirmation_click(callback: Callable, action_text: str, icon: rl.Texture, exit_on_confirm: bool = True, red: bool = False):
-  if not ui_state.engaged:
+  if not ui_state.engaged and False:
     def confirm_callback():
       # Check engaged again in case it changed while the dialog was open
       # TODO: if true, we stay on the dialog if not exit_on_confirm until normal onroad timeout
@@ -74,7 +74,7 @@ def _engaged_confirmation_click(callback: Callable, action_text: str, icon: rl.T
 
     gui_app.push_widget(BigConfirmationDialog(f"slide to\n{action_text.lower()}", icon, confirm_callback, exit_on_confirm=exit_on_confirm, red=red))
   else:
-    gui_app.push_widget(BigDialog(f"Disengage to {action_text}", ""))
+    gui_app.push_widget(BigDialog("", f"Disengage to {action_text}"))
 
 
 class EngagedConfirmationCircleButton(BigCircleButton):
@@ -152,13 +152,13 @@ class PairBigButton(BigButton):
     super()._handle_mouse_release(mouse_pos)
 
     # TODO: show ad dialog when clicked if not prime
-    if ui_state.prime_state.is_paired():
-      return
+    # if ui_state.prime_state.is_paired():
+    #   return
     dlg: BigDialog | PairingDialog
     if not system_time_valid():
-      dlg = BigDialog(tr("Please connect to Wi-Fi to complete initial pairing"), "")
-    elif UNREGISTERED_DONGLE_ID == (ui_state.params.get("DongleId") or UNREGISTERED_DONGLE_ID):
-      dlg = BigDialog(tr("Device must be registered with the comma.ai backend to pair"), "")
+      dlg = BigDialog("", tr("Please connect to Wi-Fi to complete initial pairing"))
+    elif UNREGISTERED_DONGLE_ID == (ui_state.params.get("DongleId") or UNREGISTERED_DONGLE_ID) or 1:
+      dlg = BigDialog("", tr("Device must be registered with the comma.ai backend to pair"))
     else:
       dlg = PairingDialog()
     gui_app.push_widget(dlg)
@@ -187,8 +187,8 @@ class UpdateOpenpilotBigButton(BigButton):
   def _handle_mouse_release(self, mouse_pos: MousePos):
     super()._handle_mouse_release(mouse_pos)
 
-    if not system_time_valid():
-      dlg = BigDialog(tr("Please connect to Wi-Fi to update"), "")
+    if not system_time_valid() or 1:
+      dlg = BigDialog("", tr("Please connect to Wi-Fi to update"))
       gui_app.push_widget(dlg)
       return
 
