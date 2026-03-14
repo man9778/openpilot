@@ -1,7 +1,9 @@
 #include "tools/cabana/imgui/bootstrap.h"
 
 #include "tools/cabana/imgui/devicestream.h"
+#ifdef HAS_LIBUSB
 #include "tools/cabana/imgui/pandastream.h"
+#endif
 #include "tools/cabana/imgui/replaystream.h"
 #ifdef __linux__
 #include "tools/cabana/imgui/socketcanstream.h"
@@ -14,9 +16,11 @@ AbstractStream *createStreamForLaunchConfig(const CabanaLaunchConfig &config, st
   if (config.mode == CabanaLaunchConfig::Mode::Zmq) {
     return new DeviceStream(config.zmq_address);
   }
+#ifdef HAS_LIBUSB
   if (config.mode == CabanaLaunchConfig::Mode::Panda) {
     return new PandaStream({.serial = config.panda_serial});
   }
+#endif
 #ifdef __linux__
   if (config.mode == CabanaLaunchConfig::Mode::SocketCan) {
     if (!SocketCanStream::available()) {

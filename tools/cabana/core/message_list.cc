@@ -59,8 +59,9 @@ bool matchesFilters(const MessageListItem &item, const MessageListFilter &filter
       case 0:
         match = containsCaseInsensitive(item.name, text);
         if (!match) {
+          const auto &filter_text = text;
           match = std::any_of(item.signal_names.begin(), item.signal_names.end(),
-                              [&](const auto &signal_name) { return containsCaseInsensitive(signal_name, text); });
+                              [&](const auto &signal_name) { return containsCaseInsensitive(signal_name, filter_text); });
         }
         break;
       case 1:
