@@ -212,7 +212,7 @@ SConscript([
   'selfdrive/ui/SConscript',
 ])
 
-if Dir('#tools/cabana/').exists() and arch != "larch64":
+if Dir('#tools/cabana/').exists() and arch not in ("larch64", "Darwin"):
   SConscript(['tools/cabana/SConscript'])
 
 
