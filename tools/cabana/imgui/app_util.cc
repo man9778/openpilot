@@ -1,8 +1,9 @@
 #include "tools/cabana/imgui/app_util.h"
 
-#define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
+#elif defined(IMGUI_IMPL_OPENGL_ES3)
+#include <GLES3/gl3.h>
 #else
 #include <GL/gl.h>
 #endif
@@ -447,7 +448,6 @@ bool saveScreenshot(const std::string &path, int width, int height) {
 
   std::vector<unsigned char> pixels(width * height * 4);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
-  glReadBuffer(GL_BACK);
   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
   // Write as PPM (portable pixmap) - no Qt dependency
